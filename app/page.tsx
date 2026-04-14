@@ -1,16 +1,15 @@
+"use client";
+
 declare global {
   interface Window {
     ethereum?: any;
   }
 }
 
-"use client";
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ethers } from "ethers";
 
 const ARC_CHAIN_ID_HEX = "0x4cef52";
-const ARC_CHAIN_ID_DEC = 5042002;
 const RPC = "https://rpc.testnet.arc.network";
 const EXPLORER = "https://testnet.arcscan.app";
 const USDC = "0x3600000000000000000000000000000000000000";
@@ -68,15 +67,15 @@ export default function Home() {
     const signer = await provider.getSigner();
     const contract = new ethers.Contract(USDC, ABI, signer);
 
-    const tx = await contract.transfer(
+    const txRes = await contract.transfer(
       to,
       ethers.parseUnits(amount, 6)
     );
 
     setStatus("Sending...");
-    setTx(tx.hash);
+    setTx(txRes.hash);
 
-    await tx.wait();
+    await txRes.wait();
 
     setStatus("Success ✅");
     getBalance(provider, account);
