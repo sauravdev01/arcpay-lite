@@ -6,27 +6,35 @@ declare global {
   }
 }
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ethers } from "ethers";
+import QRCode from "qrcode.react";
+import { useSearchParams } from "next/navigation";
 
 const ARC_CHAIN_ID_HEX = "0x4cef52";
 const RPC = "https://rpc.testnet.arc.network";
-const EXPLORER = "https://testnet.arcscan.app";
-const USDC = "0x3600000000000000000000000000000000000000";
-
-const ABI = [
-  "function transfer(address to, uint256 amount) returns (bool)",
-  "function balanceOf(address owner) view returns (uint256)",
-];
 
 export default function Home() {
+  const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState("");
-  const [provider, setProvider] = useState<any>(null);
-  const [balance, setBalance] = useState("0");
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState("");
-  const [tx, setTx] = useState("");
+  const [txs, setTxs] = useState<string[]>([]);
+
+  const params = useSearchParams();
+
+  useEffect(() => {
+    setTimeout(() => setLoading(false), 2000);
+
+    const stored = localStorage.getItem("txs");
+    if (stored) setTxs(JSON.parse(stored));
+
+    const toParam = params.get("to");
+    const amtParam = params.get("amount");
+
+    if (toParam) setTo(toParam);
+    if (amtParam) setAmount(amtParam);
+  }, []);
 
   async function connectWallet() {
     if (!window.ethereum) return alert("Install MetaMask");
@@ -42,97 +50,120 @@ export default function Home() {
           chainName: "Arc Testnet",
           rpcUrls: [RPC],
           nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-          blockExplorerUrls: [EXPLORER],
         }],
       });
     });
 
-    const prov = new ethers.BrowserProvider(window.ethereum);
-    const acc = await prov.send("eth_requestAccounts", []);
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const acc = await provider.send("eth_requestAccounts", []);
     setAccount(acc[0]);
-    setProvider(prov);
-
-    getBalance(prov, acc[0]);
   }
 
-  async function getBalance(prov:any, addr:string) {
-    const contract = new ethers.Contract(USDC, ABI, prov);
-    const bal = await contract.balanceOf(addr);
-    setBalance(ethers.formatUnits(bal, 6));
+  function validate() {
+    if (!to.startsWith("0x") || to.length !== 42) {
+      alert("Invalid address");
+      return false;
+    }
+    if (Number(amount) <= 0) {
+      alert("Invalid amount");
+      return false;
+    }
+    return true;
   }
 
-  async function sendUSDC() {
-    if (!provider) return alert("Connect wallet");
+  function fakeSend() {
+    if (!validate()) return;
 
-    const signer = await provider.getSigner();
-    const contract = new ethers.Contract(USDC, ABI, signer);
+    const hash = "0x" + Math.random().toString(16).slice(2, 10);
 
-    const txRes = await contract.transfer(
-      to,
-      ethers.parseUnits(amount, 6)
+    const newTxs = [hash, ...txs];
+    setTxs(newTxs);
+    localStorage.setItem("txs", JSON.stringify(newTxs));
+
+    alert("Transaction simulated 🚀");
+  }
+
+  function generateLink() {
+    const link = `${window.location.origin}?to=${account}&amount=1`;
+    navigator.clipboard.writeText(link);
+    alert("Link copied 🚀");
+  }
+
+  async function paste() {
+    const text = await navigator.clipboard.readText();
+    setTo(text);
+  }
+
+  if (loading) {
+    return (
+      <div className="h-screen bg-black flex items-center justify-center">
+        <h1 className="text-6xl text-white arc-text">ARC ⚡</h1>
+      </div>
     );
-
-    setStatus("Sending...");
-    setTx(txRes.hash);
-
-    await txRes.wait();
-
-    setStatus("Success ✅");
-    getBalance(provider, account);
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-6 rounded-xl w-full max-w-md shadow">
-        
-        <h1 className="text-2xl font-bold mb-2">ArcPay Lite</h1>
-        <p className="text-gray-500 mb-4">Send USDC easily</p>
+    <div className="min-h-screen flex items-center justify-center">
 
-        <button
-          onClick={connectWallet}
-          className="w-full bg-black text-white py-2 rounded-lg mb-4"
-        >
-          {account ? "Connected" : "Connect Wallet"}
+      {!account && (
+        <button onClick={connectWallet} className="bg-white text-black px-6 py-3 rounded-xl">
+          Connect Wallet
         </button>
+      )}
 
-        <div className="bg-gray-50 p-3 rounded mb-4">
-          <p className="text-xs break-all">{account || "Not connected"}</p>
-          <p className="font-semibold mt-2">{balance} USDC</p>
+      {account && (
+        <div className="bg-white/5 p-6 rounded-xl w-80 border border-white/10">
+
+          <p className="text-xs mb-2">
+            {account.slice(0,6)}...{account.slice(-4)}
+          </p>
+
+          <button onClick={()=>navigator.clipboard.writeText(account)}>
+            Copy
+          </button>
+
+          <div className="mt-4 text-center">
+            <QRCode value={account} size={100} />
+          </div>
+
+          <input
+            className="w-full p-2 mt-4 bg-black border"
+            placeholder="Receiver"
+            value={to}
+            onChange={(e)=>setTo(e.target.value)}
+          />
+
+          <button onClick={paste}>Paste</button>
+
+          <input
+            className="w-full p-2 mt-2 bg-black border"
+            placeholder="Amount"
+            value={amount}
+            onChange={(e)=>setAmount(e.target.value)}
+          />
+
+          <button onClick={()=>setAmount("10")}>Max</button>
+
+          <p className="text-xs mt-2">Fee: ~0.01 USDC</p>
+
+          <button onClick={fakeSend} className="w-full bg-blue-500 py-2 mt-3 rounded">
+            Send
+          </button>
+
+          <button onClick={generateLink} className="w-full bg-purple-500 py-2 mt-2 rounded">
+            Payment Link
+          </button>
+
+          <div className="mt-4">
+            <p className="text-sm">History</p>
+            {txs.map((t)=>(
+              <p key={t} className="text-xs">{t}</p>
+            ))}
+          </div>
+
         </div>
+      )}
 
-        <input
-          placeholder="Receiver address"
-          className="w-full p-2 border rounded mb-2"
-          onChange={(e)=>setTo(e.target.value)}
-        />
-
-        <input
-          placeholder="Amount"
-          className="w-full p-2 border rounded mb-3"
-          onChange={(e)=>setAmount(e.target.value)}
-        />
-
-        <button
-          onClick={sendUSDC}
-          className="w-full bg-blue-500 text-white py-2 rounded"
-        >
-          Send
-        </button>
-
-        {status && (
-          <p className="mt-3 text-sm">{status}</p>
-        )}
-
-        {tx && (
-          <a
-            href={`${EXPLORER}/tx/${tx}`}
-            target="_blank"
-            className="text-blue-500 text-xs block mt-2"
-          >
-            View Transaction
-          </a>
-        )}
-      </div>
     </div>
   );
 }
