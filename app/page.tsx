@@ -20,7 +20,7 @@ export default function Home() {
   const [txs, setTxs] = useState<string[]>([]);
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 1500);
+    setTimeout(() => setLoading(false), 1400);
 
     const stored = localStorage.getItem("txs");
     if (stored) setTxs(JSON.parse(stored));
@@ -49,20 +49,8 @@ export default function Home() {
     setAccount(acc[0]);
   }
 
-  function validate() {
-    if (!to.startsWith("0x") || to.length !== 42) {
-      alert("Invalid address");
-      return false;
-    }
-    if (Number(amount) <= 0) {
-      alert("Invalid amount");
-      return false;
-    }
-    return true;
-  }
-
   function fakeSend() {
-    if (!validate()) return;
+    if (!to || !amount) return alert("Fill all fields");
 
     const hash = "0x" + Math.random().toString(16).slice(2, 10);
 
@@ -70,13 +58,14 @@ export default function Home() {
     setTxs(newTxs);
     localStorage.setItem("txs", JSON.stringify(newTxs));
 
-    alert("Transaction simulated 🚀");
+    setTo("");
+    setAmount("");
   }
 
   function generateLink() {
     const link = `${window.location.origin}?to=${account}&amount=1`;
     navigator.clipboard.writeText(link);
-    alert("Link copied 🚀");
+    alert("Payment link copied 🚀");
   }
 
   async function paste() {
@@ -86,82 +75,109 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="h-screen bg-black flex items-center justify-center">
-        <h1 className="text-5xl text-white">ARC ⚡</h1>
+      <div className="h-screen flex items-center justify-center">
+        <h1 className="text-6xl arc-text">ARC ⚡</h1>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white">
+    <div className="min-h-screen flex items-center justify-center px-4">
 
       {!account && (
-        <button
-          onClick={connectWallet}
-          className="bg-white text-black px-6 py-3 rounded-xl"
-        >
-          Connect Wallet
-        </button>
+        <div className="glass-card p-8 rounded-2xl text-center w-full max-w-sm">
+          <h1 className="text-2xl mb-2 font-semibold">ArcPay</h1>
+          <p className="muted mb-6">Fast USDC payments on Arc</p>
+
+          <button
+            onClick={connectWallet}
+            className="primary-btn w-full py-3 rounded-xl"
+          >
+            Connect Wallet
+          </button>
+        </div>
       )}
 
       {account && (
-        <div className="bg-white/5 p-6 rounded-xl w-80 border border-white/10">
+        <div className="glass-card p-6 rounded-2xl w-full max-w-sm">
 
-          <p className="text-xs mb-2">
-            {account.slice(0,6)}...{account.slice(-4)}
-          </p>
+          {/* Header */}
+          <div className="mb-4">
+            <p className="text-xs muted">Connected</p>
+            <p className="text-sm">
+              {account.slice(0,6)}...{account.slice(-4)}
+            </p>
 
-          <button
-            onClick={() => navigator.clipboard.writeText(account)}
-            className="text-xs mb-2"
-          >
-            Copy Address
-          </button>
+            <button
+              onClick={() => navigator.clipboard.writeText(account)}
+              className="text-xs mt-1 muted"
+            >
+              Copy address
+            </button>
+          </div>
 
+          {/* Inputs */}
           <input
-            className="w-full p-2 mt-4 bg-black border rounded"
-            placeholder="Receiver"
+            className="dark-input mb-2"
+            placeholder="Receiver address"
             value={to}
             onChange={(e)=>setTo(e.target.value)}
           />
 
-          <button onClick={paste} className="text-xs mt-1">
-            Paste
-          </button>
+          <div className="flex gap-2 mb-2">
+            <button onClick={paste} className="text-xs muted">
+              Paste
+            </button>
+          </div>
 
           <input
-            className="w-full p-2 mt-2 bg-black border rounded"
-            placeholder="Amount"
+            className="dark-input mb-2"
+            placeholder="Amount (USDC)"
             value={amount}
             onChange={(e)=>setAmount(e.target.value)}
           />
 
-          <button onClick={()=>setAmount("10")} className="text-xs mt-1">
+          <button
+            onClick={()=>setAmount("10")}
+            className="text-xs muted mb-2"
+          >
             Max
           </button>
 
-          <p className="text-xs mt-2 text-zinc-400">
-            Fee: ~0.01 USDC
+          <p className="text-xs muted mb-3">
+            Fee ≈ 0.01 USDC
           </p>
 
+          {/* Buttons */}
           <button
             onClick={fakeSend}
-            className="w-full bg-blue-500 py-2 mt-3 rounded"
+            className="primary-btn w-full py-2 rounded-xl mb-2"
           >
             Send
           </button>
 
           <button
             onClick={generateLink}
-            className="w-full bg-purple-500 py-2 mt-2 rounded"
+            className="secondary-btn w-full py-2 rounded-xl"
           >
             Payment Link
           </button>
 
-          <div className="mt-4">
-            <p className="text-sm">History</p>
+          {/* History */}
+          <div className="mt-5">
+            <p className="text-sm mb-2">History</p>
+
+            {txs.length === 0 && (
+              <p className="text-xs muted">No transactions yet</p>
+            )}
+
             {txs.map((t)=>(
-              <p key={t} className="text-xs">{t}</p>
+              <div
+                key={t}
+                className="text-xs bg-white/5 px-2 py-1 rounded mb-1"
+              >
+                {t}
+              </div>
             ))}
           </div>
 
