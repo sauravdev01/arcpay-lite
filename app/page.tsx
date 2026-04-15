@@ -8,8 +8,11 @@ declare global {
 
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import QRCode from "qrcode.react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
+
+// ✅ FIXED QR (SSR OFF)
+const QRCode = dynamic(() => import("qrcode.react"), { ssr: false });
 
 const ARC_CHAIN_ID_HEX = "0x4cef52";
 const RPC = "https://rpc.testnet.arc.network";
@@ -103,10 +106,13 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-black text-white">
 
       {!account && (
-        <button onClick={connectWallet} className="bg-white text-black px-6 py-3 rounded-xl">
+        <button
+          onClick={connectWallet}
+          className="bg-white text-black px-6 py-3 rounded-xl"
+        >
           Connect Wallet
         </button>
       )}
@@ -118,39 +124,54 @@ export default function Home() {
             {account.slice(0,6)}...{account.slice(-4)}
           </p>
 
-          <button onClick={()=>navigator.clipboard.writeText(account)}>
-            Copy
+          <button
+            onClick={() => navigator.clipboard.writeText(account)}
+            className="text-xs mb-2"
+          >
+            Copy Address
           </button>
 
-          <div className="mt-4 text-center">
+          <div className="mt-4 flex justify-center">
             <QRCode value={account} size={100} />
           </div>
 
           <input
-            className="w-full p-2 mt-4 bg-black border"
+            className="w-full p-2 mt-4 bg-black border border-white/10 rounded"
             placeholder="Receiver"
             value={to}
             onChange={(e)=>setTo(e.target.value)}
           />
 
-          <button onClick={paste}>Paste</button>
+          <button onClick={paste} className="text-xs mt-1">
+            Paste
+          </button>
 
           <input
-            className="w-full p-2 mt-2 bg-black border"
+            className="w-full p-2 mt-2 bg-black border border-white/10 rounded"
             placeholder="Amount"
             value={amount}
             onChange={(e)=>setAmount(e.target.value)}
           />
 
-          <button onClick={()=>setAmount("10")}>Max</button>
+          <button onClick={()=>setAmount("10")} className="text-xs mt-1">
+            Max
+          </button>
 
-          <p className="text-xs mt-2">Fee: ~0.01 USDC</p>
+          <p className="text-xs mt-2 text-zinc-400">
+            Fee: ~0.01 USDC
+          </p>
 
-          <button onClick={fakeSend} className="w-full bg-blue-500 py-2 mt-3 rounded">
+          <button
+            onClick={fakeSend}
+            className="w-full bg-blue-500 py-2 mt-3 rounded"
+          >
             Send
           </button>
 
-          <button onClick={generateLink} className="w-full bg-purple-500 py-2 mt-2 rounded">
+          <button
+            onClick={generateLink}
+            className="w-full bg-purple-500 py-2 mt-2 rounded"
+          >
             Payment Link
           </button>
 
